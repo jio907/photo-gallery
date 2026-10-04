@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>城市光影 · 我的照片集</title>
+<style>
+:root{color-scheme:dark;--bg:#08090b;--panel:#111317;--muted:#a4a7ae;--line:#292c32}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f6f4ef;font-family:system-ui,-apple-system,"Noto Sans SC",sans-serif}
+header{padding:20px 5vw;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);position:sticky;top:0;background:#08090bf0;z-index:2}
+.logo{letter-spacing:.18em;font-size:12px}.tag{font-size:12px;color:var(--muted)}
+main{max-width:1180px;margin:auto;padding:38px 5vw 80px}.intro{padding:45px 0 32px}.intro p{color:var(--muted);letter-spacing:.12em;font-size:11px}.intro h1{font-size:clamp(44px,10vw,100px);font-weight:500;line-height:.95;letter-spacing:-.05em;margin:18px 0}
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:28px 0}.btn{background:#f4f1e9;color:#111;border:0;border-radius:30px;padding:12px 18px;font-size:14px;cursor:pointer}.btn.secondary{background:#191c21;color:#eee;border:1px solid #363a42}.note{color:var(--muted);font-size:12px;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px}.card{margin:0;min-width:0}.card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#16191d;cursor:pointer}.card figcaption{padding:10px 0;color:#d9d9d9;font-size:13px;display:flex;justify-content:space-between;gap:10px}.card small{color:var(--muted)}.empty{border:1px dashed #343841;padding:30px;text-align:center;color:var(--muted);grid-column:1/-1;line-height:1.8}
+footer{border-top:1px solid var(--line);padding:26px 5vw;color:#6e737c;font-size:11px;letter-spacing:.1em}
+.lightbox{display:none;position:fixed;inset:0;z-index:5;background:#000f;align-items:center;justify-content:center;padding:24px}.lightbox.open{display:flex}.lightbox img{max-width:95vw;max-height:84vh;object-fit:contain}.close{position:absolute;right:20px;top:14px;font-size:32px;background:none;color:white;border:0}
+@media(max-width:600px){header{padding:17px 5vw}.tag{max-width:140px;text-align:right}.grid{grid-template-columns:1fr;gap:22px}.intro{padding-top:28px}.card img{aspect-ratio:4/3}}
+</style>
+</head>
+<body>
+<header><div class="logo">CITY / LIGHTS</div><div class="tag">我的个人摄影集</div></header>
+<main>
+<section class="intro"><p>PERSONAL PHOTO COLLECTION</p><h1>城市<br>光影。</h1><div class="note">收集每一次按下快门的瞬间。</div></section>
+<div class="toolbar">
+  <button class="btn" id="addBtn">＋ 添加照片</button>
+  <button class="btn secondary" id="exportBtn">备份照片清单</button>
+  <label class="btn secondary" for="importInput">导入备份</label>
+  <input id="photoInput" type="file" accept="image/*" multiple hidden>
+  <input id="importInput" type="file" accept="application/json,.json" hidden>
+</div>
+<p class="note" id="status">本地预览版：添加的照片保存在当前浏览器。要让手机和电脑同步，需要完成下方说明中的云端部署步骤。</p>
+<section class="grid" id="grid"></section>
+</main>
+<footer>© 2026 CITY / LIGHTS — YOUR MOMENTS, YOUR STORIES</footer>
+<div class="lightbox" id="lightbox"><button class="close" aria-label="关闭">×</button><img id="bigImg" alt=""></div>
+<script>
+const KEY='city_lights_gallery_v1', grid=document.getElementById('grid'), status=document.getElementById('status');
+let photos=[];
+try{photos=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(photos));status.textContent='已保存到当前浏览器。注意：目前还没有云端同步。'}catch(e){status.textContent='浏览器空间可能不足。建议每次添加少量照片，并点击“备份照片清单”。'}}
+function render(){grid.innerHTML='';if(!photos.length){grid.innerHTML='<div class="empty">这里还没有照片。<br>点上方「＋ 添加照片」开始制作你的照片集。</div>';return}
+photos.forEach((p,i)=>{const fig=document.createElement('figure');fig.className='card';const img=document.createElement('img');img.src=p.data;img.alt=p.name;img.loading='lazy';img.onclick=()=>{document.getElementById('bigImg').src=p.data;document.getElementById('lightbox').classList.add('open')};const cap=document.createElement('figcaption');const name=document.createElement('span');name.textContent=p.name;const del=document.createElement('button');del.textContent='删除';del.className='btn secondary';del.style.padding='5px 10px';del.style.fontSize='12px';del.onclick=()=>{if(confirm('确定删除这张照片吗？')){photos.splice(i,1);save();render()}};cap.append(name,del);fig.append(img,cap);grid.append(fig)})}
+document.getElementById('addBtn').onclick=()=>document.getElementById('photoInput').click();
+document.getElementById('photoInput').onchange=async e=>{const files=[...e.target.files];for(const f of files){if(!f.type.startsWith('image/'))continue;const data=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(f)});photos.push({name:f.name.replace(/\.[^.]+$/,''),data})}save();render();e.target.value=''};
+document.getElementById('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(photos)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='city-lights-backup.json';a.click();URL.revokeObjectURL(a.href)};
+document.getElementById('importInput').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;const incoming=JSON.parse(await f.text());if(Array.isArray(incoming)){photos=incoming;save();render();status.textContent='备份导入成功。'}}catch(err){alert('备份文件无法读取。')}e.target.value=''};
+document.querySelector('.close').onclick=()=>document.getElementById('lightbox').classList.remove('open');
+document.getElementById('lightbox').onclick=e=>{if(e.target.id==='lightbox')e.currentTarget.classList.remove('open')};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('lightbox').classList.remove('open')});
+render();
+</script>
+</body></html>
